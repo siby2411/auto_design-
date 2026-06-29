@@ -25,15 +25,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'transmission'     => $_POST['transmission'] ?? 'manuelle',
         'mileage'          => (int)($_POST['mileage'] ?? 0),
         'seats'            => (int)($_POST['seats'] ?? 5),
-        'doors'            => (int)($_POST['doors'] ?? 4),
-        'power_hp'         => (int)($_POST['power_hp'] ?? 0) ?: null,
         'category_id'      => (int)($_POST['category_id'] ?? 0) ?: null,
         'sale_price'       => (float)($_POST['sale_price'] ?? 0) ?: null,
         'rental_price_day' => (float)($_POST['rental_price_day'] ?? 0) ?: null,
         'status'           => $_POST['status'] ?? 'disponible',
         'type'             => $_POST['type'] ?? 'les_deux',
         'description'      => trim($_POST['description'] ?? ''),
-        'features'         => trim($_POST['features'] ?? ''),
         'user_id'          => $_SESSION['user_id'],
     ];
 
@@ -50,16 +47,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($id) {
-        // UPDATE
-        $sql = "UPDATE vehicles SET brand=?,model=?,year=?,color=?,fuel_type=?,transmission=?,
-                mileage=?,seats=?,doors=?,power_hp=?,category_id=?,sale_price=?,
-                rental_price_day=?,status=?,type=?,description=?,features=?" .
-               ($imgName ? ",main_image=?" : "") .
+        // UPDATE - Version simplifiée sans doors, power_hp, features
+        $sql = "UPDATE vehicles SET 
+                brand=?, model=?, year=?, color=?, fuel_type=?, transmission=?,
+                mileage=?, seats=?, category_id=?, sale_price=?,
+                rental_price_day=?, status=?, type=?, description=?" .
+               ($imgName ? ", main_image=?" : "") .
                " WHERE id=?";
-        $params = [$data['brand'],$data['model'],$data['year'],$data['color'],$data['fuel_type'],
-                   $data['transmission'],$data['mileage'],$data['seats'],$data['doors'],$data['power_hp'],
-                   $data['category_id'],$data['sale_price'],$data['rental_price_day'],$data['status'],
-                   $data['type'],$data['description'],$data['features']];
+        $params = [
+            $data['brand'], $data['model'], $data['year'], $data['color'], 
+            $data['fuel_type'], $data['transmission'],
+            $data['mileage'], $data['seats'], $data['category_id'], 
+            $data['sale_price'], $data['rental_price_day'], 
+            $data['status'], $data['type'], $data['description']
+        ];
         if ($imgName) $params[] = $imgName;
         $params[] = $id;
         $db->prepare($sql)->execute($params);
@@ -67,15 +68,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         // INSERT
         $ref = $data['reference'] ?: generateRef('OTA');
-        $sql = "INSERT INTO vehicles (reference,brand,model,year,color,fuel_type,transmission,
-                mileage,seats,doors,power_hp,category_id,sale_price,rental_price_day,
-                status,type,description,features,main_image,user_id)
-                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
-        $db->prepare($sql)->execute([$ref,$data['brand'],$data['model'],$data['year'],
-            $data['color'],$data['fuel_type'],$data['transmission'],$data['mileage'],
-            $data['seats'],$data['doors'],$data['power_hp'],$data['category_id'],
-            $data['sale_price'],$data['rental_price_day'],$data['status'],$data['type'],
-            $data['description'],$data['features'],$imgName,$data['user_id']]);
+        $sql = "INSERT INTO vehicles (
+                reference, brand, model, year, color, fuel_type, transmission,
+                mileage, seats, category_id, sale_price, rental_price_day,
+                status, type, description, main_image, user_id
+                ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+        $db->prepare($sql)->execute([
+            $ref, $data['brand'], $data['model'], $data['year'],
+            $data['color'], $data['fuel_type'], $data['transmission'],
+            $data['mileage'], $data['seats'], $data['category_id'],
+            $data['sale_price'], $data['rental_price_day'],
+            $data['status'], $data['type'], $data['description'],
+            $imgName, $data['user_id']
+        ]);
         flash('success', 'Véhicule créé avec succès.');
     }
     header('Location: /vehicles.php'); exit;
@@ -144,7 +149,7 @@ require_once __DIR__ . '/../includes/header.php';
   <input type="hidden" name="action" value="list">
   <div class="search-input-wrap">
     <i class="fa-solid fa-magnifying-glass"></i>
-    <input type="text" name="q" placeholder="Rechercher marque, modèle, référence…" value="<?= sanitize($search) ?>">
+    <input type="text" name="q" placeholder="Rechercher marque, modèle, référence…" value="<?= htmlspecialchars($search) ?>">
   </div>
   <select name="status" class="filter-select">
     <option value="">Tous statuts</option>
@@ -187,23 +192,23 @@ require_once __DIR__ . '/../includes/header.php';
       <tbody>
         <?php foreach ($vehicles as $v): ?>
         <tr>
-          <td><span class="table-ref"><?= sanitize($v['reference']) ?></span></td>
+          <td><span class="table-ref"><?= htmlspecialchars($v['reference']) ?></span></td>
           <td>
             <div style="display:flex;align-items:center;gap:12px">
               <?php if ($v['main_image']): ?>
-              <img src="/uploads/vehicles/<?= sanitize($v['main_image']) ?>" 
+              <img src="/uploads/vehicles/<?= htmlspecialchars($v['main_image']) ?>" 
                    style="width:44px;height:34px;object-fit:cover;border-radius:6px;border:1px solid #E2E2EA">
               <?php else: ?>
               <div style="width:44px;height:34px;background:#F0F0F4;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:18px">🚗</div>
               <?php endif; ?>
               <div>
-                <div class="table-name"><?= sanitize($v['brand']) ?> <?= sanitize($v['model']) ?></div>
-                <div class="table-sub"><?= sanitize($v['color']) ?></div>
+                <div class="table-name"><?= htmlspecialchars($v['brand']) ?> <?= htmlspecialchars($v['model']) ?></div>
+                <div class="table-sub"><?= htmlspecialchars($v['color']) ?></div>
               </div>
             </div>
           </td>
           <td><?= $v['year'] ?></td>
-          <td><?= sanitize($v['cat_name'] ?? '—') ?></td>
+          <td><?= htmlspecialchars($v['cat_name'] ?? '—') ?></td>
           <td><?= ucfirst($v['fuel_type']) ?></td>
           <td style="font-weight:600"><?= $v['sale_price'] ? formatPrice((float)$v['sale_price']) : '—' ?></td>
           <td><?= $v['rental_price_day'] ? formatPrice((float)$v['rental_price_day']) : '—' ?></td>
@@ -260,7 +265,7 @@ require_once __DIR__ . '/../includes/header.php';
     <a href="/vehicles.php" style="color:var(--gray-400);text-decoration:none;font-size:13px">
       <i class="fa-solid fa-arrow-left"></i> Retour inventaire
     </a>
-    <div class="page-title" style="margin-top:6px"><?= sanitize($vehicle['brand'].' '.$vehicle['model']) ?></div>
+    <div class="page-title" style="margin-top:6px"><?= htmlspecialchars($vehicle['brand'].' '.$vehicle['model']) ?></div>
   </div>
   <div class="d-flex gap-8">
     <a href="/vehicles.php?action=edit&id=<?= $vehicle['id'] ?>" class="btn btn-outline"><i class="fa-solid fa-pen"></i> Modifier</a>
@@ -279,21 +284,21 @@ require_once __DIR__ . '/../includes/header.php';
   <div class="vehicle-canvas">
     <div class="vehicle-canvas-hero">
       <div class="canvas-brand-strip">
-        <span>OMEGA TECH AUTO · <?= sanitize($vehicle['brand']) ?></span>
-        <span class="canvas-ref"><?= sanitize($vehicle['reference']) ?></span>
+        <span>OMEGA TECH AUTO · <?= htmlspecialchars($vehicle['brand']) ?></span>
+        <span class="canvas-ref"><?= htmlspecialchars($vehicle['reference']) ?></span>
       </div>
       <?php if ($vehicle['main_image']): ?>
-        <img src="/uploads/vehicles/<?= sanitize($vehicle['main_image']) ?>" 
-             alt="<?= sanitize($vehicle['brand'].' '.$vehicle['model']) ?>">
+        <img src="/uploads/vehicles/<?= htmlspecialchars($vehicle['main_image']) ?>" 
+             alt="<?= htmlspecialchars($vehicle['brand'].' '.$vehicle['model']) ?>">
       <?php else: ?>
         <div style="font-size:120px;opacity:.1">🚗</div>
       <?php endif; ?>
     </div>
 
     <div class="vehicle-canvas-info">
-      <div class="vehicle-card-brand"><?= sanitize($vehicle['brand']) ?></div>
-      <div class="canvas-title"><?= sanitize($vehicle['model']) ?></div>
-      <div class="canvas-subtitle"><?= $vehicle['year'] ?> · <?= sanitize($vehicle['color']) ?> · <?= sanitize($vehicle['cat_name'] ?? '') ?></div>
+      <div class="vehicle-card-brand"><?= htmlspecialchars($vehicle['brand']) ?></div>
+      <div class="canvas-title"><?= htmlspecialchars($vehicle['model']) ?></div>
+      <div class="canvas-subtitle"><?= $vehicle['year'] ?> · <?= htmlspecialchars($vehicle['color']) ?> · <?= htmlspecialchars($vehicle['cat_name'] ?? '') ?></div>
 
       <div class="canvas-price-row">
         <?php if ($vehicle['sale_price']): ?>
@@ -311,15 +316,7 @@ require_once __DIR__ . '/../includes/header.php';
       </div>
 
       <?php if ($vehicle['description']): ?>
-      <p style="margin-top:16px;font-size:14px;color:var(--gray-500);line-height:1.7"><?= sanitize($vehicle['description']) ?></p>
-      <?php endif; ?>
-
-      <?php if ($vehicle['features']): ?>
-      <div class="canvas-features">
-        <?php foreach (explode(',', $vehicle['features']) as $feat): ?>
-        <span class="canvas-feature-tag"><i class="fa-solid fa-check" style="color:var(--gold);font-size:10px"></i><?= sanitize(trim($feat)) ?></span>
-        <?php endforeach; ?>
-      </div>
+      <p style="margin-top:16px;font-size:14px;color:var(--gray-500);line-height:1.7"><?= htmlspecialchars($vehicle['description']) ?></p>
       <?php endif; ?>
     </div>
   </div>
@@ -346,8 +343,6 @@ require_once __DIR__ . '/../includes/header.php';
           ['fa-gears','Transmission', ucfirst($vehicle['transmission'])],
           ['fa-road','Kilométrage', number_format($vehicle['mileage'],0,',',' ').' km'],
           ['fa-users','Places', $vehicle['seats']],
-          ['fa-door-closed','Portes', $vehicle['doors']],
-          ['fa-bolt','Puissance', $vehicle['power_hp'] ? $vehicle['power_hp'].' ch' : '—'],
         ];
         foreach ($specs as [$icon, $label, $val]):
         ?>
@@ -365,7 +360,7 @@ require_once __DIR__ . '/../includes/header.php';
       <div class="card-header"><span class="card-title">Historique</span></div>
       <div class="card-body" style="font-size:13px;color:var(--gray-400)">
         <div>Créé le <?= date('d/m/Y', strtotime($vehicle['created_at'])) ?></div>
-        <div style="margin-top:6px">Réf: <?= sanitize($vehicle['reference']) ?></div>
+        <div style="margin-top:6px">Réf: <?= htmlspecialchars($vehicle['reference']) ?></div>
       </div>
     </div>
 
@@ -379,7 +374,7 @@ require_once __DIR__ . '/../includes/header.php';
     <a href="/vehicles.php" style="color:var(--gray-400);text-decoration:none;font-size:13px">
       <i class="fa-solid fa-arrow-left"></i> Retour
     </a>
-    <div class="page-title" style="margin-top:6px"><?= $action==='new'?'Nouveau véhicule':'Modifier: '.sanitize($vehicle['brand'].' '.$vehicle['model']) ?></div>
+    <div class="page-title" style="margin-top:6px"><?= $action==='new'?'Nouveau véhicule':'Modifier: '.htmlspecialchars($vehicle['brand'].' '.$vehicle['model']) ?></div>
   </div>
 </div>
 
@@ -393,20 +388,20 @@ require_once __DIR__ . '/../includes/header.php';
   <div class="form-group">
     <label class="form-label">Référence</label>
     <input type="text" name="reference" class="form-control" 
-           value="<?= sanitize($vehicle['reference'] ?? '') ?>"
+           value="<?= htmlspecialchars($vehicle['reference'] ?? '') ?>"
            placeholder="Auto-générée si vide" <?= $action==='edit'?'readonly':'' ?>>
   </div>
 
   <div class="form-group">
     <label class="form-label">Marque <span class="req">*</span></label>
     <input type="text" name="brand" class="form-control" required
-           value="<?= sanitize($vehicle['brand'] ?? '') ?>" placeholder="Toyota, Mercedes…">
+           value="<?= htmlspecialchars($vehicle['brand'] ?? '') ?>" placeholder="Toyota, Mercedes…">
   </div>
 
   <div class="form-group">
     <label class="form-label">Modèle <span class="req">*</span></label>
     <input type="text" name="model" class="form-control" required
-           value="<?= sanitize($vehicle['model'] ?? '') ?>" placeholder="Land Cruiser, Classe C…">
+           value="<?= htmlspecialchars($vehicle['model'] ?? '') ?>" placeholder="Land Cruiser, Classe C…">
   </div>
 
   <div class="form-group">
@@ -418,7 +413,7 @@ require_once __DIR__ . '/../includes/header.php';
   <div class="form-group">
     <label class="form-label">Couleur</label>
     <input type="text" name="color" class="form-control"
-           value="<?= sanitize($vehicle['color'] ?? '') ?>" placeholder="Blanc Nacré, Noir…">
+           value="<?= htmlspecialchars($vehicle['color'] ?? '') ?>" placeholder="Blanc Nacré, Noir…">
   </div>
 
   <div class="form-group">
@@ -427,7 +422,7 @@ require_once __DIR__ . '/../includes/header.php';
       <option value="">— Choisir —</option>
       <?php foreach ($categories as $cat): ?>
       <option value="<?= $cat['id'] ?>" <?= ($vehicle['category_id'] ?? 0) == $cat['id'] ? 'selected' : '' ?>>
-        <?= sanitize($cat['name']) ?>
+        <?= htmlspecialchars($cat['name']) ?>
       </option>
       <?php endforeach; ?>
     </select>
@@ -464,18 +459,6 @@ require_once __DIR__ . '/../includes/header.php';
     <label class="form-label">Nombre de places</label>
     <input type="number" name="seats" class="form-control" min="2" max="20"
            value="<?= $vehicle['seats'] ?? 5 ?>">
-  </div>
-
-  <div class="form-group">
-    <label class="form-label">Portes</label>
-    <input type="number" name="doors" class="form-control" min="2" max="6"
-           value="<?= $vehicle['doors'] ?? 4 ?>">
-  </div>
-
-  <div class="form-group">
-    <label class="form-label">Puissance (ch)</label>
-    <input type="number" name="power_hp" class="form-control" min="0"
-           value="<?= $vehicle['power_hp'] ?? '' ?>" placeholder="Ex: 150">
   </div>
 
   <div class="form-section-title">Commercial</div>
@@ -515,15 +498,7 @@ require_once __DIR__ . '/../includes/header.php';
   <div class="form-group col-span-full">
     <label class="form-label">Description</label>
     <textarea name="description" class="form-control" rows="3" 
-              placeholder="Décrivez ce véhicule…"><?= sanitize($vehicle['description'] ?? '') ?></textarea>
-  </div>
-
-  <div class="form-group col-span-full">
-    <label class="form-label">Équipements <span class="form-hint">(séparés par des virgules)</span></label>
-    <input type="text" name="features" class="form-control"
-           value="<?= sanitize($vehicle['features'] ?? '') ?>"
-           placeholder="GPS, Climatisation, Cuir, Caméra de recul…">
-    <span class="form-hint">Ex: GPS, Climatisation, Cuir, Toit ouvrant, Caméra recul</span>
+              placeholder="Décrivez ce véhicule…"><?= htmlspecialchars($vehicle['description'] ?? '') ?></textarea>
   </div>
 
   <div class="form-section-title">Photo principale</div>
@@ -532,7 +507,7 @@ require_once __DIR__ . '/../includes/header.php';
     <label class="form-label">Image du véhicule</label>
     <?php if (!empty($vehicle['main_image'])): ?>
     <div style="margin-bottom:12px">
-      <img id="imgPreview" src="/uploads/vehicles/<?= sanitize($vehicle['main_image']) ?>" 
+      <img id="imgPreview" src="/uploads/vehicles/<?= htmlspecialchars($vehicle['main_image']) ?>" 
            style="max-height:200px;border-radius:10px;border:1px solid var(--gray-200);object-fit:contain;background:var(--gray-50);padding:8px">
     </div>
     <?php else: ?>
